@@ -84,28 +84,38 @@ contract('WhiteElephant', async accounts => {
        await whiteElephant.guessAnswer(answer, recipient, { from: recipient })
        assert.equal(await linkToken.balanceOf(recipient), '500000000000000000')
      })
-  it('allows the owner, and only the owner, to withdraw funds',
-          async () => {
-            const ethAmount = 100
-            const linkAmount = 100
-            await web3.eth.sendTransaction(
-              { to: whiteElephant.address, from: owner, value: ethAmount })
-            await linkToken.transfer(whiteElephant.address, linkAmount,
-                                     { from: world })
-            let errorMessage
-            await whiteElephant.ownerWithdraw(world, { from: world })
-              .catch(err => {
-                assert(err, 'expected error to be raised')
-                assert(err.message, 'expected error to be raised')
-                return err.message
-              })
-              .then(msg => { errorMessage = msg })
-            assert(errorMessage.includes('only owner can withdraw'),
-                   'people other than owner can withdraw!')
-            const otherAddress = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
-            await whiteElephant.ownerWithdraw(otherAddress, { from: owner })
-            assert.equal(await web3.eth.getBalance(otherAddress), ethAmount)
-            assert.equal(await linkToken.balanceOf(otherAddress), linkAmount)
-          })
+  it('allows the owner, and only the owner, to withdraw funds, and only ' +
+     'after 2020',  async () => {
+       const ethAmount = 100
+       const linkAmount = 100
+       await web3.eth.sendTransaction(
+         { to: whiteElephant.address, from: owner, value: ethAmount })
+       await linkToken.transfer(whiteElephant.address, linkAmount,
+                                { from: world })
+       let errorMessage
+       await whiteElephant.ownerWithdraw(world, { from: world })
+         .catch(err => {
+           assert(err, 'expected error to be raised')
+           assert(err.message, 'expected error to be raised')
+           return err.message
+         })
+         .then(msg => { errorMessage = msg })
+       assert(errorMessage.includes('only owner can withdraw'),
+              'people other than owner can withdraw!')
+       const otherAddress = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+       errorMessage = null
+       await whiteElephant.ownerWithdraw(otherAddress, { from: owner })
+         .catch(err => {
+           assert(err, 'expected error to be raised')
+           assert(err.message, 'expected error to be raised')
+           return err.message
+         })
+         .then(msg => { errorMessage = msg })
+       assert(errorMessage.includes('cannot withdraw until 2020'))
+       web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime",
+                                  params: [2678400 /* one month */], id: 0})
+       await whiteElephant.ownerWithdraw(otherAddress, { from: owner })
+       // assert.equal(await web3.eth.getBalance(otherAddress), ethAmount)
+       // assert.equal(await linkToken.balanceOf(otherAddress), linkAmount)
+     })
 })
-
